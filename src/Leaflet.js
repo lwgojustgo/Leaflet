@@ -101,6 +101,7 @@ GeoJSON.asFeature = asFeature;
 export {GeoJSON, geoJSON, geoJson};
 
 export {ImageOverlay, imageOverlay} from './layer/ImageOverlay';
+export {VideoOverlay, videoOverlay} from './layer/VideoOverlay';
 
 export {DivOverlay} from './layer/DivOverlay';
 export {Popup, popup} from './layer/Popup';
