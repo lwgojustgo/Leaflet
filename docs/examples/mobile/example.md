@@ -6,7 +6,7 @@ css: "body {
 		margin: 0;
 	}
 	html, body, #map {
-		height: 100vh;
+		height: 100%;
 		width: 100vw;
 	}"
 ---

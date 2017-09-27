@@ -84,6 +84,8 @@ export var Polyline = Path.extend({
 		return !this._latlngs.length;
 	},
 
+	// @method closestLayerPoint: Point
+	// Returns the point closest to `p` on the Polyline.
 	closestLayerPoint: function (p) {
 		var minDistance = Infinity,
 		    minPoint = null,
@@ -176,13 +178,13 @@ export var Polyline = Path.extend({
 	},
 
 	_defaultShape: function () {
-		return LineUtil._flat(this._latlngs) ? this._latlngs : this._latlngs[0];
+		return LineUtil.isFlat(this._latlngs) ? this._latlngs : this._latlngs[0];
 	},
 
 	// recursively convert latlngs input into actual LatLng instances; calculate bounds along the way
 	_convertLatLngs: function (latlngs) {
 		var result = [],
-		    flat = LineUtil._flat(latlngs);
+		    flat = LineUtil.isFlat(latlngs);
 
 		for (var i = 0, len = latlngs.length; i < len; i++) {
 			if (flat) {
@@ -295,7 +297,7 @@ export var Polyline = Path.extend({
 		var i, j, k, len, len2, part,
 		    w = this._clickTolerance();
 
-		if (!this._pxBounds.contains(p)) { return false; }
+		if (!this._pxBounds || !this._pxBounds.contains(p)) { return false; }
 
 		// hit detection for polylines
 		for (i = 0, len = this._parts.length; i < len; i++) {
@@ -322,3 +324,5 @@ export function polyline(latlngs, options) {
 	return new Polyline(latlngs, options);
 }
 
+// Retrocompat. Allow plugins to support Leaflet versions before and after 1.1.
+Polyline._flat = LineUtil._flat;

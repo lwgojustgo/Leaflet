@@ -16,7 +16,7 @@ import * as Browser from '../core/Browser';
 
 
 // @property TRANSFORM: String
-// Vendor-prefixed fransform style name (e.g. `'webkitTransform'` for WebKit).
+// Vendor-prefixed transform style name (e.g. `'webkitTransform'` for WebKit).
 export var TRANSFORM = testProp(
 	['transform', 'WebkitTransform', 'OTransform', 'MozTransform', 'msTransform']);
 
@@ -24,10 +24,12 @@ export var TRANSFORM = testProp(
 // the same for the transitionend event, in particular the Android 4.1 stock browser
 
 // @property TRANSITION: String
-// Vendor-prefixed transform style name.
+// Vendor-prefixed transition style name.
 export var TRANSITION = testProp(
 	['webkitTransition', 'transition', 'OTransition', 'MozTransition', 'msTransition']);
 
+// @property TRANSITION_END: String
+// Vendor-prefixed transitionend event name.
 export var TRANSITION_END =
 	TRANSITION === 'webkitTransition' || TRANSITION === 'OTransition' ? TRANSITION + 'End' : 'transitionend';
 
@@ -84,14 +86,19 @@ export function empty(el) {
 // @function toFront(el: HTMLElement)
 // Makes `el` the last child of its parent, so it renders in front of the other children.
 export function toFront(el) {
-	el.parentNode.appendChild(el);
+	var parent = el.parentNode;
+	if (parent.lastChild !== el) {
+		parent.appendChild(el);
+	}
 }
 
 // @function toBack(el: HTMLElement)
 // Makes `el` the first child of its parent, so it renders behind the other children.
 export function toBack(el) {
 	var parent = el.parentNode;
-	parent.insertBefore(el, parent.firstChild);
+	if (parent.firstChild !== el) {
+		parent.insertBefore(el, parent.firstChild);
+	}
 }
 
 // @function hasClass(el: HTMLElement, name: String): Boolean
@@ -216,7 +223,7 @@ export function setPosition(el, point) {
 
 	/*eslint-disable */
 	el._leaflet_pos = point;
-	/*eslint-enable */
+	/* eslint-enable */
 
 	if (Browser.any3d) {
 		setTransform(el, point);
@@ -295,7 +302,7 @@ export function preventOutline(element) {
 	while (element.tabIndex === -1) {
 		element = element.parentNode;
 	}
-	if (!element || !element.style) { return; }
+	if (!element.style) { return; }
 	restoreOutline();
 	_outlineElement = element;
 	_outlineStyle = element.style.outline;

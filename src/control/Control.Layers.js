@@ -10,7 +10,7 @@ import * as DomUtil from '../dom/DomUtil';
  * @aka L.Control.Layers
  * @inherits Control
  *
- * The layers control gives users the ability to switch between different base layers and switch overlays on/off (check out the [detailed example](http://leafletjs.com/examples/layers-control.html)). Extends `Control`.
+ * The layers control gives users the ability to switch between different base layers and switch overlays on/off (check out the [detailed example](http://leafletjs.com/examples/layers-control/)). Extends `Control`.
  *
  * @example
  *
@@ -80,6 +80,7 @@ export var Layers = Control.extend({
 	initialize: function (baseLayers, overlays, options) {
 		Util.setOptions(this, options);
 
+		this._layerControlInputs = [];
 		this._layers = [];
 		this._lastZIndex = 0;
 		this._handlingClick = false;
@@ -100,11 +101,15 @@ export var Layers = Control.extend({
 		this._map = map;
 		map.on('zoomend', this._checkDisabledLayers, this);
 
+		for (var i = 0; i < this._layers.length; i++) {
+			this._layers[i].layer.on('add remove', this._onLayerChange, this);
+		}
+
 		return this._container;
 	},
 
 	addTo: function (map) {
-		L.Control.prototype.addTo.call(this, map);
+		Control.prototype.addTo.call(this, map);
 		// Trigger expand after Layers Control has been inserted into DOM so that is now has an actual height.
 		return this._expandIfNotCollapsed();
 	},
@@ -201,13 +206,6 @@ export var Layers = Control.extend({
 			DomEvent.on(link, 'focus', this.expand, this);
 		}
 
-		// work around for Firefox Android issue https://github.com/Leaflet/Leaflet/issues/2033
-		DomEvent.on(form, 'click', function () {
-			setTimeout(Util.bind(this._onInputClick, this), 0);
-		}, this);
-
-		// TODO keyboard accessibility
-
 		if (!collapsed) {
 			this.expand();
 		}
@@ -229,7 +227,9 @@ export var Layers = Control.extend({
 	},
 
 	_addLayer: function (layer, name, overlay) {
-		layer.on('add remove', this._onLayerChange, this);
+		if (this._map) {
+			layer.on('add remove', this._onLayerChange, this);
+		}
 
 		this._layers.push({
 			layer: layer,
@@ -238,7 +238,7 @@ export var Layers = Control.extend({
 		});
 
 		if (this.options.sortLayers) {
-			this._layers.sort(L.bind(function (a, b) {
+			this._layers.sort(Util.bind(function (a, b) {
 				return this.options.sortFunction(a.layer, b.layer, a.name, b.name);
 			}, this));
 		}
@@ -257,6 +257,7 @@ export var Layers = Control.extend({
 		DomUtil.empty(this._baseLayersList);
 		DomUtil.empty(this._overlaysList);
 
+		this._layerControlInputs = [];
 		var baseLayersPresent, overlaysPresent, i, obj, baseLayersCount = 0;
 
 		for (i = 0; i < this._layers.length; i++) {
@@ -329,6 +330,7 @@ export var Layers = Control.extend({
 			input = this._createRadioElement('leaflet-base-layers', checked);
 		}
 
+		this._layerControlInputs.push(input);
 		input.layerId = Util.stamp(obj.layer);
 
 		DomEvent.on(input, 'click', this._onInputClick, this);
@@ -352,8 +354,8 @@ export var Layers = Control.extend({
 	},
 
 	_onInputClick: function () {
-		var inputs = this._form.getElementsByTagName('input'),
-		    input, layer, hasLayer;
+		var inputs = this._layerControlInputs,
+		    input, layer;
 		var addedLayers = [],
 		    removedLayers = [];
 
@@ -362,22 +364,24 @@ export var Layers = Control.extend({
 		for (var i = inputs.length - 1; i >= 0; i--) {
 			input = inputs[i];
 			layer = this._getLayer(input.layerId).layer;
-			hasLayer = this._map.hasLayer(layer);
 
-			if (input.checked && !hasLayer) {
+			if (input.checked) {
 				addedLayers.push(layer);
-
-			} else if (!input.checked && hasLayer) {
+			} else if (!input.checked) {
 				removedLayers.push(layer);
 			}
 		}
 
 		// Bugfix issue 2318: Should remove all old layers before readding new ones
 		for (i = 0; i < removedLayers.length; i++) {
-			this._map.removeLayer(removedLayers[i]);
+			if (this._map.hasLayer(removedLayers[i])) {
+				this._map.removeLayer(removedLayers[i]);
+			}
 		}
 		for (i = 0; i < addedLayers.length; i++) {
-			this._map.addLayer(addedLayers[i]);
+			if (!this._map.hasLayer(addedLayers[i])) {
+				this._map.addLayer(addedLayers[i]);
+			}
 		}
 
 		this._handlingClick = false;
@@ -386,7 +390,7 @@ export var Layers = Control.extend({
 	},
 
 	_checkDisabledLayers: function () {
-		var inputs = this._form.getElementsByTagName('input'),
+		var inputs = this._layerControlInputs,
 		    input,
 		    layer,
 		    zoom = this._map.getZoom();

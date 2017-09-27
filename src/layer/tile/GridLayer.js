@@ -85,8 +85,11 @@ export var GridLayer = Layer.extend({
 		// Opacity of the tiles. Can be used in the `createTile()` function.
 		opacity: 1,
 
-		// @option updateWhenIdle: Boolean = depends
-		// If `false`, new tiles are loaded during panning, otherwise only after it (for better performance). `true` by default on mobile browsers, otherwise `false`.
+		// @option updateWhenIdle: Boolean = (depends)
+		// Load new tiles only when panning ends.
+		// `true` by default on mobile browsers, in order to avoid too many requests and keep smooth navigation.
+		// `false` otherwise in order to display new tiles _during_ panning, since it is easy to pan outside the
+		// [`keepBuffer`](#gridlayer-keepbuffer) option in desktop browsers.
 		updateWhenIdle: Browser.mobile,
 
 		// @option updateWhenZooming: Boolean = true
@@ -106,11 +109,11 @@ export var GridLayer = Layer.extend({
 		bounds: null,
 
 		// @option minZoom: Number = 0
-		// The minimum zoom level that tiles will be loaded at. By default the entire map.
+		// The minimum zoom level down to which this layer will be displayed (inclusive).
 		minZoom: 0,
 
 		// @option maxZoom: Number = undefined
-		// The maximum zoom level that tiles will be loaded at.
+		// The maximum zoom level up to which this layer will be displayed (inclusive).
 		maxZoom: undefined,
 
 		// @option maxNativeZoom: Number = undefined
@@ -258,7 +261,7 @@ export var GridLayer = Layer.extend({
 	// @section Extension methods
 	// Layers extending `GridLayer` shall reimplement the following method.
 	// @method createTile(coords: Object, done?: Function): HTMLElement
-	// Called only internally, must be overriden by classes extending `GridLayer`.
+	// Called only internally, must be overridden by classes extending `GridLayer`.
 	// Returns the `HTMLElement` corresponding to the given `coords`. If the `done` callback
 	// is specified, it must be called when the tile has finished loading and drawing.
 	createTile: function () {
@@ -322,7 +325,11 @@ export var GridLayer = Layer.extend({
 			if (fade < 1) {
 				nextFrame = true;
 			} else {
-				if (tile.active) { willPrune = true; }
+				if (tile.active) {
+					willPrune = true;
+				} else {
+					this._onOpaqueTile(tile);
+				}
 				tile.active = true;
 			}
 		}
@@ -334,6 +341,8 @@ export var GridLayer = Layer.extend({
 			this._fadeFrame = Util.requestAnimFrame(this._updateOpacity, this);
 		}
 	},
+
+	_onOpaqueTile: Util.falseFn,
 
 	_initContainer: function () {
 		if (this._container) { return; }
@@ -358,9 +367,11 @@ export var GridLayer = Layer.extend({
 		for (var z in this._levels) {
 			if (this._levels[z].el.children.length || z === zoom) {
 				this._levels[z].el.style.zIndex = maxZoom - Math.abs(zoom - z);
+				this._onUpdateLevel(z);
 			} else {
 				DomUtil.remove(this._levels[z].el);
 				this._removeTilesAtZoom(z);
+				this._onRemoveLevel(z);
 				delete this._levels[z];
 			}
 		}
@@ -381,12 +392,20 @@ export var GridLayer = Layer.extend({
 
 			// force the browser to consider the newly added element for transition
 			Util.falseFn(level.el.offsetWidth);
+
+			this._onCreateLevel(level);
 		}
 
 		this._level = level;
 
 		return level;
 	},
+
+	_onUpdateLevel: Util.falseFn,
+
+	_onRemoveLevel: Util.falseFn,
+
+	_onCreateLevel: Util.falseFn,
 
 	_pruneTiles: function () {
 		if (!this._map) {
@@ -442,6 +461,7 @@ export var GridLayer = Layer.extend({
 	_invalidateAll: function () {
 		for (var z in this._levels) {
 			DomUtil.remove(this._levels[z].el);
+			this._onRemoveLevel(z);
 			delete this._levels[z];
 		}
 		this._removeAllTiles();
@@ -631,6 +651,12 @@ export var GridLayer = Layer.extend({
 		    noPruneRange = new Bounds(tileRange.getBottomLeft().subtract([margin, -margin]),
 		                              tileRange.getTopRight().add([margin, -margin]));
 
+		// Sanity check: panic if the tile range contains Infinity somewhere.
+		if (!(isFinite(tileRange.min.x) &&
+		      isFinite(tileRange.min.y) &&
+		      isFinite(tileRange.max.x) &&
+		      isFinite(tileRange.max.y))) { throw new Error('Attempted to load an infinite number of tiles'); }
+
 		for (var key in this._tiles) {
 			var c = this._tiles[key].coords;
 			if (c.z !== this._tileZoom || !noPruneRange.contains(new Point(c.x, c.y))) {
@@ -719,7 +745,7 @@ export var GridLayer = Layer.extend({
 		    bounds = new LatLngBounds(nw, se);
 
 		if (!this.options.noWrap) {
-			map.wrapLatLngBounds(bounds);
+			bounds = map.wrapLatLngBounds(bounds);
 		}
 
 		return bounds;
@@ -742,6 +768,12 @@ export var GridLayer = Layer.extend({
 		var tile = this._tiles[key];
 		if (!tile) { return; }
 
+		// Cancels any pending http requests associated with the tile
+		// unless we're on Android's stock browser,
+		// see https://github.com/Leaflet/Leaflet/issues/137
+		if (!Browser.androidStock) {
+			tile.el.setAttribute('src', Util.emptyImageUrl);
+		}
 		DomUtil.remove(tile.el);
 
 		delete this._tiles[key];

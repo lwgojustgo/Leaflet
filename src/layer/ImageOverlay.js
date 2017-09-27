@@ -43,7 +43,15 @@ export var ImageOverlay = Layer.extend({
 
 		// @option errorOverlayUrl: String = ''
 		// URL to the overlay image to show in place of the overlay that failed to load.
-		errorOverlayUrl: ''
+		errorOverlayUrl: '',
+
+		// @option zIndex: Number = 1
+		// The explicit [zIndex](https://developer.mozilla.org/docs/Web/CSS/CSS_Positioning/Understanding_z_index) of the tile layer.
+		zIndex: 1,
+
+		// @option className: String = ''
+		// A custom class name to assign to the image. Empty by default.
+		className: '',
 	},
 
 	initialize: function (url, bounds, options) { // (String, LatLngBounds, Object)
@@ -128,7 +136,7 @@ export var ImageOverlay = Layer.extend({
 	// @method setBounds(bounds: LatLngBounds): this
 	// Update the bounds that this ImageOverlay covers
 	setBounds: function (bounds) {
-		this._bounds = bounds;
+		this._bounds = toLatLngBounds(bounds);
 
 		if (this._map) {
 			this._reset();
@@ -149,6 +157,14 @@ export var ImageOverlay = Layer.extend({
 		return events;
 	},
 
+	// @method: setZIndex(value: Number) : this
+	// Changes the [zIndex](#imageoverlay-zindex) of the image overlay.
+	setZIndex: function (value) {
+		this.options.zIndex = value;
+		this._updateZIndex();
+		return this;
+	},
+
 	// @method getBounds(): LatLngBounds
 	// Get the bounds that this ImageOverlay covers
 	getBounds: function () {
@@ -156,23 +172,31 @@ export var ImageOverlay = Layer.extend({
 	},
 
 	// @method getElement(): HTMLElement
-	// Get the img element that represents the ImageOverlay on the map
+	// Returns the instance of [`HTMLImageElement`](https://developer.mozilla.org/docs/Web/API/HTMLImageElement)
+	// used by this overlay.
 	getElement: function () {
 		return this._image;
 	},
 
 	_initImage: function () {
 		var img = this._image = DomUtil.create('img',
-				'leaflet-image-layer ' + (this._zoomAnimated ? 'leaflet-zoom-animated' : ''));
+			'leaflet-image-layer ' + (this._zoomAnimated ? 'leaflet-zoom-animated' : '') +
+			 (this.options.className || ''));
 
 		img.onselectstart = Util.falseFn;
 		img.onmousemove = Util.falseFn;
 
+		// @event load: Event
+		// Fired when the ImageOverlay layer has loaded its image
 		img.onload = Util.bind(this.fire, this, 'load');
 		img.onerror = Util.bind(this._overlayOnError, this, 'error');
 
 		if (this.options.crossOrigin) {
 			img.crossOrigin = '';
+		}
+
+		if (this.options.zIndex) {
+			this._updateZIndex();
 		}
 
 		img.src = this._url;
@@ -203,10 +227,21 @@ export var ImageOverlay = Layer.extend({
 		DomUtil.setOpacity(this._image, this.options.opacity);
 	},
 
+	_updateZIndex: function () {
+		if (this._image && this.options.zIndex !== undefined && this.options.zIndex !== null) {
+			this._image.style.zIndex = this.options.zIndex;
+		}
+	},
+
 	_overlayOnError: function () {
+		// @event error: Event
+		// Fired when the ImageOverlay layer has loaded its image
+		this.fire('error');
+
 		var errorUrl = this.options.errorOverlayUrl;
 		if (errorUrl && this._url !== errorUrl) {
 			this._url = errorUrl;
+			this._image.src = errorUrl;
 		}
 	}
 });

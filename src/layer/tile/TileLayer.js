@@ -26,7 +26,7 @@ import * as DomUtil from '../../dom/DomUtil';
  * 'http://{s}.somedomain.com/blabla/{z}/{x}/{y}{r}.png'
  * ```
  *
- * `{s}` means one of the available subdomains (used sequentially to help with browser parallel requests per domain limitation; subdomain values are specified in options; `a`, `b` or `c` by default, can be omitted), `{z}` — zoom level, `{x}` and `{y}` — tile coordinates. `{r}` can be used to add @2x to the URL to load retina tiles.
+ * `{s}` means one of the available subdomains (used sequentially to help with browser parallel requests per domain limitation; subdomain values are specified in options; `a`, `b` or `c` by default, can be omitted), `{z}` — zoom level, `{x}` and `{y}` — tile coordinates. `{r}` can be used to add "&commat;2x" to the URL to load retina tiles.
  *
  * You can use custom keys in the template, which will be [evaluated](#util-template) from TileLayer options, like this:
  *
@@ -42,11 +42,11 @@ export var TileLayer = GridLayer.extend({
 	// @aka TileLayer options
 	options: {
 		// @option minZoom: Number = 0
-		// Minimum zoom number.
+		// The minimum zoom level down to which this layer will be displayed (inclusive).
 		minZoom: 0,
 
 		// @option maxZoom: Number = 18
-		// Maximum zoom number.
+		// The maximum zoom level up to which this layer will be displayed (inclusive).
 		maxZoom: 18,
 
 		// @option subdomains: String|String[] = 'abc'
@@ -123,7 +123,7 @@ export var TileLayer = GridLayer.extend({
 
 	// @method createTile(coords: Object, done?: Function): HTMLElement
 	// Called only internally, overrides GridLayer's [`createTile()`](#gridlayer-createtile)
-	// to return an `<img>` HTML element with the appropiate image URL given `coords`. The `done`
+	// to return an `<img>` HTML element with the appropriate image URL given `coords`. The `done`
 	// callback is called when the tile has been loaded.
 	createTile: function (coords, done) {
 		var tile = document.createElement('img');
@@ -188,7 +188,7 @@ export var TileLayer = GridLayer.extend({
 
 	_tileOnError: function (done, tile, e) {
 		var errorUrl = this.options.errorTileUrl;
-		if (errorUrl && tile.src !== errorUrl) {
+		if (errorUrl && tile.getAttribute('src') !== errorUrl) {
 			tile.src = errorUrl;
 		}
 		done(e, tile);
@@ -229,6 +229,7 @@ export var TileLayer = GridLayer.extend({
 				if (!tile.complete) {
 					tile.src = Util.emptyImageUrl;
 					DomUtil.remove(tile);
+					delete this._tiles[i];
 				}
 			}
 		}
