@@ -1866,8 +1866,10 @@ var pointer = !!(window.PointerEvent || msPointer);
 // This does not necessarily mean that the browser is running in a computer with
 // a touchscreen, it only means that the browser is capable of understanding
 // touch events.
-var touch = !window.L_NO_TOUCH && (pointer || 'ontouchstart' in window ||
-		(window.DocumentTouch && document instanceof window.DocumentTouch));
+// var touch = !window.L_NO_TOUCH && (pointer || 'ontouchstart' in window ||
+// 		(window.DocumentTouch && document instanceof window.DocumentTouch));
+  // add by liwei
+  var touch = false;
 
 // @property mobileOpera: Boolean; `true` for the Opera browser in a mobile device.
 var mobileOpera = mobile && opera;
