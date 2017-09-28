@@ -11936,6 +11936,9 @@ var Canvas = Renderer.extend({
 			}
 			layer.options._dashArray = dashArray;
 		}
+		else {
+      layer.options._dashArray = [];
+    }
 	},
 
 	_requestRedraw: function (layer) {
