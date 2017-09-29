@@ -4564,7 +4564,7 @@ function createMap(id, options) {
 	// return new Map(id, options);
   // add by liwei
   // 避免所有对于L.Map的扩展失效
-  return new Map(id, options);
+  return new L.Map(id, options);
 }
 
 /*
