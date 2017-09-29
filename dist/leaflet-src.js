@@ -4561,7 +4561,10 @@ var Map = Evented.extend({
 // Instantiates a map object given an instance of a `<div>` HTML element
 // and optionally an object literal with `Map options`.
 function createMap(id, options) {
-	return new Map(id, options);
+	// return new Map(id, options);
+  // add by liwei
+  // 避免所有对于L.Map的扩展失效
+  return new Map(id, options);
 }
 
 /*
